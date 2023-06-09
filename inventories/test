@@ -1,0 +1,10 @@
+download:
+  hosts:
+    korp.csc.fi:
+      tmp_dir: "/tmp"
+      kielipankki_dir: /tmp/target
+      packages:
+        - { name: skn_01-10, path: SKN, wildcard: "*.wav", zipbasedir: "" }
+
+kielipankki-streaming-pre-prod:
+  hosts: 195.148.21.204

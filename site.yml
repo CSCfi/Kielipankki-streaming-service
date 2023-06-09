@@ -1,0 +1,28 @@
+- name: Copy and unpack files
+  hosts: download
+  gather_facts: no
+  remote_user: cloud-user
+  become: yes
+
+  tasks:
+  - file:
+      path: "{{ item }}/.checksum"
+      state: directory
+    delegate_to: "{{ target_install_host }}"
+    become: no
+    loop:
+      - "{{ tmp_dir }}"
+
+  - include_tasks: process_package.yml
+    with_items:  "{{ packages }}"
+    loop_control:
+      loop_var: package
+
+
+
+
+
+
+
+
+

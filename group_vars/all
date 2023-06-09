@@ -1,0 +1,42 @@
+pouta_instance_name: "kielipankki-streaming"
+vm_name_postfix: "pre-prod"
+#vm_name_postfix: "{{ local_user }}"
+
+
+target_tmp_host: 195.148.21.204 
+target_install_host: 195.148.21.204 
+tmp_dir: "/var/www/html/stream"
+checksum_algorithm: md5
+local_user: "{{ lookup('env','USER') }}"
+download_root_dir: /var/www/html/download
+
+# list of packages to keep in sync
+# documentation of attributes:
+# name: The name of the zip file without the .zip ending
+# path: The path of the file in the korp/download/ directory
+# mode: either pub_mode (read rights to "other") or aca_mode (only "kieli" has read rights)
+# zipbasedir: Needs to be specified, if xxx.zip does not unzip to xxx/... to set permissions correctly.
+# Known issue: It is currently not possible to specify common subdirs to unzip the files to (e.g. for italian-letters
+
+packages:
+- { name: cfinsl-elicit-3, path: cfinsl/elicit, wildcard: "*.mp4", zipbasedir: "" }
+- { name: cfinsl-elicit-4, path: cfinsl/elicit, wildcard: "*.mp4", zipbasedir: "" }
+- { name: cfinsl-elicit-5, path: cfinsl/elicit, wildcard: "*.mp4", zipbasedir: "" }
+- { name: reittidemo, path: reittidemo, wildcard: "*.wav *.mp4", zipbasedir: "" }
+- { name: SSDC-2016, path: SSDC, wildcard: "*.wav *.m4a", zipbasedir: "" }
+- { name: la-murre_wav_hame-kai, path: la-murre/audio, wildcard: "*.wav", zipbasedir: "la-murre" } 
+- { name: la-murre_wav_kare-karp, path: la-murre/audio, wildcard: "*.wav", zipbasedir: "la-murre" } 
+- { name: la-murre_wav_kess-pohe, path: la-murre/audio, wildcard: "*.wav", zipbasedir: "la-murre" } 
+- { name: la-murre_wav_pohki-sate, path: la-murre/audio, wildcard: "*.wav", zipbasedir: "la-murre" } 
+- { name: la-murre_wav_satl-som, path: la-murre/audio, wildcard: "*.wav", zipbasedir: "la-murre" } 
+- { name: la-murre_wav_uusi-varp, path: la-murre/audio, wildcard: "*.wav", zipbasedir: "la-murre" }
+- { name: SSDC-2016, path: SSDC, wildcard: "*.m4a *.wav", zipbasedir: "" }
+- { name: skn_01-10, path: SKN, wildcard: "*.wav", zipbasedir: "" }
+- { name: skn_11-20, path: SKN, wildcard: "*.wav", zipbasedir: "" }
+- { name: skn_21-30, path: SKN, wildcard: "*.wav", zipbasedir: "" }
+- { name: skn_31-40, path: SKN, wildcard: "*.wav", zipbasedir: "" }
+- { name: skn_41-50, path: SKN, wildcard: "*.wav", zipbasedir: "" }
+- { name: helpuhe_wav_1970, path: helpuhe/helpuhe-audio , wildcard: "*.wav", zipbasedir: "helpuhe" }
+- { name: helpuhe_wav_1990, path: helpuhe/helpuhe-audio , wildcard: "*.wav", zipbasedir: "helpuhe" }
+- { name: helpuhe_wav_2010, path: helpuhe/helpuhe-audio , wildcard: "*.wav", zipbasedir: "helpuhe" }
+

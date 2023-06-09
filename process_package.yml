@@ -1,0 +1,114 @@
+# Note: This file is included in site.yml
+# It handles one zip file at a time, named in package.name.
+
+# set paths to files, depending on options
+- name: "{{ package.name }}: Set some facts"
+  set_fact:
+    download_zip: "{{ download_root_dir }}/{{ package.path }}/{{package.name}}.zip"
+    download_checksumfile: "{{ download_root_dir }}/{{ package.path }}/{{package.name}}.zip.{{ checksum_algorithm }}"
+    checksum_filename: "{{package.name}}.zip.{{ checksum_algorithm }}"
+    target_checksumfile: "{{ tmp_dir }}/.checksum/{{package.name}}.zip.{{ checksum_algorithm }}"
+    default_basedir: "{{ tmp_dir if package.zipbasedir == '' else tmp_dir+'/'+package.zipbasedir }}"
+    default_zipdir: "{{ tmp_dir if package.zipbasedir == '' else tmp_dir+'/'+package.zipbasedir }}/{{ package.name }}"
+
+# First check that file exists:
+- name: "{{ package.name }}: Get file info"
+  stat:
+    path: "{{ download_zip }}"
+    get_checksum: no
+    follow: yes
+  register: zipfile
+
+# Stop if it does not exist.
+- name: "{{ package.name }}: Stop if file does not exist"
+  fail:
+    msg: "{{ package.name }} does not exist. Check group_vars/all"
+  when: zipfile.stat.exists == False
+
+# Get checksum of zip file on Download server
+- name: "{{ package.name }}: Get download checksum file info"
+  stat:
+    path: "{{ download_checksumfile }}"
+  register: checksum_file
+
+# Get checksum that was copied to HPC.
+# Note: delete the hpc checksum file to force install of the package.
+- name: "{{ package.name }}: Get hpc checksum"
+  stat:
+    path: "{{ target_checksumfile }}"
+  register: target_checksum
+  become: no
+  delegate_to: "{{ target_install_host }}"
+
+# If the checksum file on Download is older or missing, create it.
+- name: "{{ package.name }}: Create download checksum file, if missing or older"
+  stat:
+    path: "{{ download_zip }}"
+    get_checksum: yes
+    checksum_algorithm: "{{ checksum_algorithm }}"
+    follow: yes
+  become: yes
+  register: zipfile_with_checksum
+  when: checksum_file.stat.exists == False or (checksum_file.stat.mtime < zipfile.stat.mtime)
+  
+- name: "{{ package.name }}: Write download checksum to file"
+  copy:
+    content: "{{zipfile_with_checksum.stat.checksum }}  {{ package.name }}.zip\n"
+    dest: "{{ download_checksumfile }}"
+  become: yes
+  when: checksum_file.stat.exists == False or (checksum_file.stat.mtime < zipfile.stat.mtime)
+
+# re-read possibly newly created checksum information
+- name: "{{ package.name }}: Get download checksum file info again"
+  stat:
+    path: "{{ download_checksumfile }}"
+  become: yes
+  register: checksum_file
+
+# Copy the data directly from Korp, doing this via Ansible would be too slow.
+# using sudo to not have to change permissions on Korp
+- name: "{{ package.name }}: Copy download checksum to target"
+  shell: sudo cat "{{ item }}" | ssh -o StrictHostKeyChecking=no "{{target_tmp_host}}" "cat > {{ tmp_dir }}/{{ item | basename }}"
+  become: no
+  when: ( target_checksum.stat.exists == False or checksum_file.stat.checksum != target_checksum.stat.checksum )
+  loop:
+    - "{{ download_checksumfile }}"
+    - "{{ download_zip }}"
+
+# Unzip package if needed.
+- name: "{{ package.name }}: Unzip package"
+  shell: unzip -o "{{ tmp_dir }}/{{package.name}}.zip" -d "{{ tmp_dir }}" {{ package.wildcard }}
+  delegate_to: "{{ target_install_host }}"
+  become: no
+  when: ( target_checksum.stat.exists == False or checksum_file.stat.checksum != target_checksum.stat.checksum )
+
+# move checksum to install HPC host
+- name: "{{ package.name }}: Move checksum to Kielipankki directory"
+  shell: mv "{{ tmp_dir }}/{{ checksum_filename }}" "{{ target_checksumfile }}"
+  delegate_to: "{{ target_install_host }}"
+  become: no
+  when: ( target_checksum.stat.exists == False or checksum_file.stat.checksum != target_checksum.stat.checksum )
+
+# Clean up
+- name: "{{ package.name }}: Delete ZIP"
+  file:
+    path: "{{ tmp_dir }}/{{package.name}}.zip"
+    state: absent
+  delegate_to: "{{ target_tmp_host }}"
+  become: no
+  when: ( target_checksum.stat.exists == False or checksum_file.stat.checksum != target_checksum.stat.checksum )
+
+# set permissions in correct directory
+- name: "{{ package.name }}: Check for directory"
+  stat:
+    path:  "{{ default_zipdir }}"
+  register: d
+  delegate_to: "{{ target_install_host }}"
+  become: no
+
+# In Zips do not unzip to a directory identical to their name, get the base directory and...
+- name: "{{ package.name }}: Set base directory"
+  set_fact:
+    base_directory: "{{ default_zipdir if d.stat.isdir is defined and d.stat.isdir else default_basedir if package.zipbasedir != '' else '' }}"
+  delegate_to: "{{ target_install_host }}"
+  become: no

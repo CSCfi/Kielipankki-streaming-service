@@ -1,0 +1,95 @@
+# You'll need to download and source your credentials before this will work:
+#  https://research.csc.fi/pouta-credentials
+#
+- name: Create virtual machine on cPouta
+  hosts: localhost # The OpenStack Shade modules run by Shade on your local machine.
+
+  vars:
+    # These will need changing based on your project
+    project_key: kielipouta
+    project_sg: stream-sg
+    project_security_groups: default,{{ project_sg }} # don't add spaces here!
+    std_image: "CentOS-7"
+
+    servers:
+      - name: "{{ pouta_instance_name }}-{{ vm_name_postfix }}"
+        image: "{{ std_image }}"
+        flavor: standard.medium
+        key_name: "{{ project_key }}"
+        security_groups: "{{ project_security_groups }}"
+        meta:
+          group: default
+
+    security_group_rules:
+      - name: nagios
+        protocol: tcp
+        port: 5666
+        allowed_ips:
+          - "193.167.254.68/32" #opsview
+
+      - name: http
+        protocol: tcp
+        port: 80
+        allowed_ips:
+          - "0.0.0.0/0"
+
+      - name: ssh
+        protocol: tcp
+        port: 22
+        allowed_ips:
+          - "193.166.1.0/16" #CSC Office
+          - "193.166.2.0/16" #CSC Office
+          - "193.166.84.0/16" #CSC VPN
+          - "193.166.85.0/16" #CSC VPN
+          - "195.148.22.239/32"  #Korp
+
+
+  roles:
+    - role: ../all/roles/create_instances
+      tags:
+        - create_instances
+
+  tasks:
+    - name: attach volume to host
+      os_server_volume:
+        state: present
+        server: "{{ pouta_instance_name }}-{{ vm_name_postfix }}"
+        volume: stream
+        device: /dev/vdb
+
+
+- name: Install Streaming Service
+  hosts: kielipankki-streaming-pre-prod
+  remote_user: cloud-user
+  become: yes  # sudo to root
+
+  roles:
+      - role: "../all/roles/postfix"
+        tags: postfix
+      - role: apache
+        tags: apache
+      - role: firewall
+        tags: firewall
+   
+  tasks:
+    - name: Install RPMFusion
+      yum:
+        name: https://download1.rpmfusion.org/free/el/rpmfusion-free-release-7.noarch.rpm
+        state: present
+        
+    - name: Install tools
+      yum:
+        name:
+          - unzip
+          - ffmpeg
+        state: present
+
+    - name: Mount stream partition
+      mount:
+        path: /var/www/html
+        src: /dev/vdb
+        fstype: xfs
+        opts: defaults
+        state: mounted
+  
+

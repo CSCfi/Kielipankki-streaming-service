@@ -1,0 +1,35 @@
+---
+# settigs for 'pass'
+password_store: "lb_passwords/kielipankki-proxy/" # relative to .password-store root
+
+local_user: "{{ lookup('env','USER') }}"
+# name Pouta dev instance using local user to avoid conflicts.
+pouta_instance_name: "kielipankki-proxy"
+vm_name_postfix: "pre-prod"
+#vm_name_postfix: "{{ local_user }}"
+
+#Server IPs
+portal_server_ip: 192.168.1.27
+metashare_server_ip: 192.168.1.25
+demoserver_ip: 195.148.30.97
+webanno_ip: 192.168.1.11
+
+#PID files location (the URN xml, etc)
+pidfile_location: http://{{ portal_server_ip }}/pid/
+
+# Names of imported files
+kielipankki_private_key: www.kielipankki.fi.key 
+kielipankki_certificate: www.kielipankki.fi.pem
+
+metashare_private_key: metashare.csc.fi.key 
+metashare_certificate: metashare.csc.fi.pem
+
+shibboleth_key: sp.kielipankki.fi.key
+shibboleth_certificate: sp.kielipankki.fi.pem
+wp_shib_spoof_key: "{{ lookup('passwordstore', 'lb_passwords/portal/wp_shib_spoof_key')}}"
+
+
+
+# WP-Cli specific
+remote_deploy_user: 'apache'
+remote_deploy_group: 'apache'
